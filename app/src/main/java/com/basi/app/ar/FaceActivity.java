@@ -60,7 +60,12 @@ import com.google.android.gms.vision.face.FaceDetector;
 
 import java.io.IOException;
 
-
+/**
+ * FaceActivity defines the app’s only activity,
+ * and along with handling touch events, also requests for permission to access the device’s camera at runtime
+ * (applies to Android 6.0 and above). FaceActivity also creates two objects which app depends on,
+ * namely CameraSource and FaceDetector
+ */
 public final class FaceActivity extends AppCompatActivity {
 
     private static final String TAG = "FaceActivity";
@@ -213,10 +218,16 @@ public final class FaceActivity extends AppCompatActivity {
         Log.d(TAG, "createCameraSource called.");
 
         // 1
+        /**
+         * Creates a FaceDetector object, which detects faces in images from the camera’s data stream.
+         */
         Context context = getApplicationContext();
         FaceDetector detector = createFaceDetector(context);
 
         // 2
+        /**
+         * Determines which camera is currently the active one.
+         */
         int facing = CameraSource.CAMERA_FACING_FRONT;
         if (!mIsFrontFacing) {
             facing = CameraSource.CAMERA_FACING_BACK;
@@ -224,10 +235,12 @@ public final class FaceActivity extends AppCompatActivity {
 
         // 3
         mCameraSource = new CameraSource.Builder(context, detector)
-                .setFacing(facing)
-                .setRequestedPreviewSize(320, 240)
-                .setRequestedFps(60.0f)
-                .setAutoFocusEnabled(true)
+                .setFacing(facing) // Specifies which camera to use
+                .setRequestedPreviewSize(320, 240) // Sets the resolution of the preview image from the camera
+                .setRequestedFps(60.0f) // Sets the camera frame rate. Higher rates mean better face tracking,
+                // but use more processor power. Experiment with different frame rates
+                .setAutoFocusEnabled(true) // Turns autofocus off or on. Keep this set to true for better face detection
+                // and user experience. This has no effect if the device doesn’t have autofocus
                 .build();
     }
 
@@ -263,13 +276,21 @@ public final class FaceActivity extends AppCompatActivity {
     private FaceDetector createFaceDetector(final Context context) {
         Log.d(TAG, "createFaceDetector called.");
 
+        // 1
         FaceDetector detector = new FaceDetector.Builder(context)
-                .setLandmarkType(FaceDetector.ALL_LANDMARKS)
-                .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
-                .setTrackingEnabled(true)
-                .setMode(FaceDetector.FAST_MODE)
-                .setProminentFaceOnly(mIsFrontFacing)
-                .setMinFaceSize(mIsFrontFacing ? 0.35f : 0.15f)
+                .setLandmarkType(FaceDetector.ALL_LANDMARKS) // Set to NO_LANDMARKS if it should not detect facial landmarks
+                // (this makes face detection faster) or ALL_LANDMARKS if landmarks should be detected
+                .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS) // Set to NO_CLASSIFICATIONS if it should not detect
+                // whether subjects’ eyes are open or closed or if they’re smiling (which speeds up face detection) or
+                // ALL_CLASSIFICATIONS if it should detect them.
+                .setTrackingEnabled(true) // Enables/disables face tracking, which maintains a consistent ID for each
+                // face from frame to frame. Since you need face tracking to process live video and multiple faces,
+                // set this to true.
+                .setMode(FaceDetector.FAST_MODE) // Set to FAST_MODE to detect fewer faces (but more quickly),
+                // or ACCURATE_MODE to detect more faces (but more slowly) and to detect the Euler Y angles of faces
+                .setProminentFaceOnly(mIsFrontFacing) // Set to true to detect only the most prominent face in the frame
+                .setMinFaceSize(mIsFrontFacing ? 0.35f : 0.15f) // Specifies the smallest face size that will be detected,
+                // expressed as a proportion of the width of the face relative to the width of the image
                 .build();
 
         MultiProcessor.Factory<Face> factory = new MultiProcessor.Factory<Face>() {
@@ -279,6 +300,13 @@ public final class FaceActivity extends AppCompatActivity {
             }
         };
 
+        /**
+         * When a face detector detects a face, it passes the result to a processor,
+         * which determines what actions should be taken. If you wanted to deal with only one face at a time,
+         * you’d use an instance of Processor. In this app, you’ll handle multiple faces, so you’ll create a MultiProcessor
+         * instance, which creates a new FaceTracker instance for each detected face. Once created,
+         * we connect the processor to the detector
+         */
         Detector.Processor<Face> processor = new MultiProcessor.Builder<>(factory).build();
         detector.setProcessor(processor);
 

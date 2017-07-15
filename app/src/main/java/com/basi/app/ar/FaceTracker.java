@@ -33,6 +33,7 @@ import android.content.Context;
 import android.graphics.PointF;
 
 import com.basi.app.ar.ui.camera.GraphicOverlay;
+import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.Tracker;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
@@ -46,57 +47,111 @@ import java.util.Map;
  */
 class FaceTracker extends Tracker<Face> {
 
-  private static final String TAG = "FaceTracker";
+    private static final String TAG = "FaceTracker";
 
-  private GraphicOverlay mOverlay;
-  private Context mContext;
-  private boolean mIsFrontFacing;
-  private FaceGraphic mFaceGraphic;
-  private FaceData mFaceData;
+    private GraphicOverlay mOverlay;
+    private Context mContext;
+    private boolean mIsFrontFacing;
+    private FaceGraphic mFaceGraphic;
+    private FaceData mFaceData;
 
-  // Subjects may move too quickly to for the system to detect their detect features,
-  // or they may move so their features are out of the tracker's detection range.
-  // This map keeps track of previously detected facial landmarks so that we can approximate
-  // their locations when they momentarily "disappear".
-  private Map<Integer, PointF> mPreviousLandmarkPositions = new HashMap<>();
+    // Subjects may move too quickly to for the system to detect their detect features,
+    // or they may move so their features are out of the tracker's detection range.
+    // This map keeps track of previously detected facial landmarks so that we can approximate
+    // their locations when they momentarily "disappear".
+    private Map<Integer, PointF> mPreviousLandmarkPositions = new HashMap<>();
 
-  FaceTracker(GraphicOverlay overlay, Context context, boolean isFrontFacing) {
-    mOverlay = overlay;
-    mContext = context;
-    mIsFrontFacing = isFrontFacing;
-    mFaceData = new FaceData();
-  }
 
-  // Facial landmark utility methods
-  // ===============================
-
-  /** Given a face and a facial landmark position,
-   *  return the coordinates of the landmark if known,
-   *  or approximated coordinates (based on prior data) if not.
-   */
-  private PointF getLandmarkPosition(Face face, int landmarkId) {
-    for (Landmark landmark : face.getLandmarks()) {
-      if (landmark.getType() == landmarkId) {
-        return landmark.getPosition();
-      }
+    FaceTracker(GraphicOverlay overlay, Context context, boolean isFrontFacing) {
+        mOverlay = overlay;
+        mContext = context;
+        mIsFrontFacing = isFrontFacing;
+        mFaceData = new FaceData();
     }
 
-    PointF landmarkPosition = mPreviousLandmarkPositions.get(landmarkId);
-    if (landmarkPosition == null) {
-      return null;
+    public FaceTracker() {
+        super();
     }
 
-    float x = face.getPosition().x + (landmarkPosition.x * face.getWidth());
-    float y = face.getPosition().y + (landmarkPosition.y * face.getHeight());
-    return new PointF(x, y);
-  }
-
-  private void updatePreviousLandmarkPositions(Face face) {
-    for (Landmark landmark : face.getLandmarks()) {
-      PointF position = landmark.getPosition();
-      float xProp = (position.x - face.getPosition().x) / face.getWidth();
-      float yProp = (position.y - face.getPosition().y) / face.getHeight();
-      mPreviousLandmarkPositions.put(landmark.getType(), new PointF(xProp, yProp));
+    /**
+     * Called when a new Face is detected and its tracking begins.
+     * You’re using it to create a new instance of FaceGraphic,
+     * which makes sense: when a new face is detected, you want to create new AR images to draw over it
+     *
+     * @param i
+     * @param face
+     */
+    @Override
+    public void onNewItem(int i, Face face) {
+        super.onNewItem(i, face);
+        mFaceGraphic = new FaceGraphic(mOverlay, mContext, mIsFrontFacing);
     }
-  }
+
+    /**
+     * Called when some property (position, angle, or state) of a tracked face changes.
+     * You’re using it to add the FaceGraphic instance to the GraphicOverlay and
+     * then call FaceGraphic’s update method, which passes along the tracked face’s data
+     *
+     * @param detections
+     * @param face
+     */
+    @Override
+    public void onUpdate(Detector.Detections<Face> detections, Face face) {
+        super.onUpdate(detections, face);
+        mOverlay.add(mFaceGraphic);
+        mFaceGraphic.update(face);
+    }
+
+    /**
+     * Called when a tracked face is assumed to be temporarily. Remove the FaceGraphic instance from the overlay
+     * @param detections
+     */
+    @Override
+    public void onMissing(Detector.Detections<Face> detections) {
+        super.onMissing(detections);
+        mOverlay.remove(mFaceGraphic);
+    }
+
+    /**
+     *Called when a tracked face is assumed to be permanently gone. Remove the FaceGraphic instance from the overlay
+     */
+    @Override
+    public void onDone() {
+        super.onDone();
+        mOverlay.remove(mFaceGraphic);
+    }
+
+// Facial landmark utility methods
+    // ===============================
+
+    /**
+     * Given a face and a facial landmark position,
+     * return the coordinates of the landmark if known,
+     * or approximated coordinates (based on prior data) if not.
+     */
+    private PointF getLandmarkPosition(Face face, int landmarkId) {
+        for (Landmark landmark : face.getLandmarks()) {
+            if (landmark.getType() == landmarkId) {
+                return landmark.getPosition();
+            }
+        }
+
+        PointF landmarkPosition = mPreviousLandmarkPositions.get(landmarkId);
+        if (landmarkPosition == null) {
+            return null;
+        }
+
+        float x = face.getPosition().x + (landmarkPosition.x * face.getWidth());
+        float y = face.getPosition().y + (landmarkPosition.y * face.getHeight());
+        return new PointF(x, y);
+    }
+
+    private void updatePreviousLandmarkPositions(Face face) {
+        for (Landmark landmark : face.getLandmarks()) {
+            PointF position = landmark.getPosition();
+            float xProp = (position.x - face.getPosition().x) / face.getWidth();
+            float yProp = (position.y - face.getPosition().y) / face.getHeight();
+            mPreviousLandmarkPositions.put(landmark.getType(), new PointF(xProp, yProp));
+        }
+    }
 }
