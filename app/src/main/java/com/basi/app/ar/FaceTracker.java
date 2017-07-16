@@ -99,11 +99,33 @@ class FaceTracker extends Tracker<Face> {
     public void onUpdate(Detector.Detections<Face> detections, Face face) {
         super.onUpdate(detections, face);
         mOverlay.add(mFaceGraphic);
-        mFaceGraphic.update(face);
+
+        // Get face dimensions.
+        mFaceData.setPosition(face.getPosition());
+        mFaceData.setWidth(face.getWidth());
+        mFaceData.setHeight(face.getHeight());
+
+        // Get the positions of facial landmarks.
+        updatePreviousLandmarkPositions(face);
+        mFaceData.setLeftEyePosition(getLandmarkPosition(face, Landmark.LEFT_EYE));
+        mFaceData.setRightEyePosition(getLandmarkPosition(face, Landmark.RIGHT_EYE));
+        mFaceData.setMouthBottomPosition(getLandmarkPosition(face, Landmark.LEFT_CHEEK));
+        mFaceData.setMouthBottomPosition(getLandmarkPosition(face, Landmark.RIGHT_CHEEK));
+        mFaceData.setNoseBasePosition(getLandmarkPosition(face, Landmark.NOSE_BASE));
+        mFaceData.setMouthBottomPosition(getLandmarkPosition(face, Landmark.LEFT_EAR));
+        mFaceData.setMouthBottomPosition(getLandmarkPosition(face, Landmark.LEFT_EAR_TIP));
+        mFaceData.setMouthBottomPosition(getLandmarkPosition(face, Landmark.RIGHT_EAR));
+        mFaceData.setMouthBottomPosition(getLandmarkPosition(face, Landmark.RIGHT_EAR_TIP));
+        mFaceData.setMouthLeftPosition(getLandmarkPosition(face, Landmark.LEFT_MOUTH));
+        mFaceData.setMouthBottomPosition(getLandmarkPosition(face, Landmark.BOTTOM_MOUTH));
+        mFaceData.setMouthRightPosition(getLandmarkPosition(face, Landmark.RIGHT_MOUTH));
+
+        mFaceGraphic.update(mFaceData);
     }
 
     /**
      * Called when a tracked face is assumed to be temporarily. Remove the FaceGraphic instance from the overlay
+     *
      * @param detections
      */
     @Override
@@ -113,7 +135,7 @@ class FaceTracker extends Tracker<Face> {
     }
 
     /**
-     *Called when a tracked face is assumed to be permanently gone. Remove the FaceGraphic instance from the overlay
+     * Called when a tracked face is assumed to be permanently gone. Remove the FaceGraphic instance from the overlay
      */
     @Override
     public void onDone() {

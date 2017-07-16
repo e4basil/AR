@@ -33,6 +33,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.PointF;
 import android.graphics.drawable.Drawable;
 
 import com.basi.app.ar.ui.camera.GraphicOverlay;
@@ -53,7 +54,7 @@ class FaceGraphic extends GraphicOverlay.Graphic {
     // This variable may be written to by one of many threads. By declaring it as volatile,
     // we guarantee that when we read its contents, we're reading the most recent "write"
     // by any thread.
-    private volatile Face mFace;
+    private volatile FaceData mFaceData;
 
     private Paint mHintTextPaint;
     private Paint mHintOutlinePaint;
@@ -119,10 +120,10 @@ class FaceGraphic extends GraphicOverlay.Graphic {
      * and passes it information about that face. The method saves that
      * information in mFace and then calls FaceGraphic’s parent class’ postInvalidate
      * method, which forces the graphic to redraw
-     * @param face
+     * @param faceData
      */
-    public void update(Face face) {
-        this.mFace = face;
+    public void update(FaceData faceData) {
+        this.mFaceData = faceData;
         postInvalidate();
         // Trigger a redraw of the graphic (i.e. cause draw() to be called)
     }
@@ -138,48 +139,62 @@ class FaceGraphic extends GraphicOverlay.Graphic {
         // Confirm that the face and its features are still visible
         // before drawing any graphics over it.
 
-        Face face = mFace;
-        if (face == null) {
+//        FaceData faceData = mFaceData;
+        if (mFaceData == null) {
             return;
         }
 
-        // 3
-        /**
-         * The x- and y-coordinates of the center of the face are calculated.
-         * FaceTracker provides camera coordinates, but you’re drawing to
-         * FaceGraphic’s view coordinates, so you use GraphicOverlay’s
-         * translateX and translateY methods to convert mFace’s camera coordinates
-         * to the view coordinates of the canvas.
-         */
-        float centerX = translateX(face.getPosition().x + face.getWidth() / 2.0f);
-        float centerY = translateY(face.getPosition().y + face.getHeight() / 2.0f);
-        float offsetX = scaleX(face.getWidth() / 2.0f);
-        float offsetY = scaleY(face.getHeight() / 2.0f);
 
-        // 4
-        /**
-         * Calculate the x-offsets for the left and right sides of the box and
-         * the y-offsets for the top and bottom. The difference between the camera’s
-         * and the view’s coordinate systems require you convert the face’s width and
-         * height using GraphicOverlay’s scaleX and scaleY methods
-         */
-        float left = centerX - offsetX;
-        float right = centerX + offsetX;
-        float top = centerY - offsetY;
-        float bottom = centerY + offsetY;
+        // 1
+        PointF detectPosition = mFaceData.getPosition();
+        PointF detectLeftEyePosition = mFaceData.getLeftEyePosition();
+        PointF detectRightEyePosition = mFaceData.getRightEyePosition();
+        PointF detectNoseBasePosition = mFaceData.getNoseBasePosition();
+        PointF detectMouthLeftPosition = mFaceData.getMouthLeftPosition();
+        PointF detectMouthBottomPosition = mFaceData.getMouthBottomPosition();
+        PointF detectMouthRightPosition = mFaceData.getMouthRightPosition();
+        if ((detectPosition == null) ||
+                (detectLeftEyePosition == null) ||
+                (detectRightEyePosition == null) ||
+                (detectNoseBasePosition == null) ||
+                (detectMouthLeftPosition == null) ||
+                (detectMouthBottomPosition == null) ||
+                (detectMouthRightPosition == null)) {
+            return;
+        }
 
-        // 5
-        /**
-         * Draw the box around the face using the calculated center coordinates
-         * and offsets
-         */
-        canvas.drawRect(left, top, right, bottom, mHintOutlinePaint);
 
-        // 6
-        /**
-         * Draw the face’s id using the face’s center point as the starting coordinates
-         */
-        canvas.drawText(String.format("id: %d", face.getId()), centerX, centerY, mHintTextPaint);
+
+        float leftEyeX = translateX(detectLeftEyePosition.x);
+        float leftEyeY = translateY(detectLeftEyePosition.y);
+        canvas.drawCircle(leftEyeX, leftEyeY, DOT_RADIUS, mHintOutlinePaint);
+        canvas.drawText("left eye", leftEyeX, leftEyeY + TEXT_OFFSET_Y, mHintTextPaint);
+
+        float rightEyeX = translateX(detectRightEyePosition.x);
+        float rightEyeY = translateY(detectRightEyePosition.y);
+        canvas.drawCircle(rightEyeX, rightEyeY, DOT_RADIUS, mHintOutlinePaint);
+        canvas.drawText("right eye", rightEyeX, rightEyeY + TEXT_OFFSET_Y, mHintTextPaint);
+
+        float noseBaseX = translateX(detectNoseBasePosition.x);
+        float noseBaseY = translateY(detectNoseBasePosition.y);
+        canvas.drawCircle(noseBaseX, noseBaseY, DOT_RADIUS, mHintOutlinePaint);
+        canvas.drawText("nose base", noseBaseX, noseBaseY + TEXT_OFFSET_Y, mHintTextPaint);
+
+        float mouthLeftX = translateX(detectMouthLeftPosition.x);
+        float mouthLeftY = translateY(detectMouthLeftPosition.y);
+        canvas.drawCircle(mouthLeftX, mouthLeftY, DOT_RADIUS, mHintOutlinePaint);
+        canvas.drawText("mouth left", mouthLeftX, mouthLeftY + TEXT_OFFSET_Y, mHintTextPaint);
+
+        float mouthRightX = translateX(detectMouthRightPosition.x);
+        float mouthRightY = translateY(detectMouthRightPosition.y);
+        canvas.drawCircle(mouthRightX, mouthRightY, DOT_RADIUS, mHintOutlinePaint);
+        canvas.drawText("mouth right", mouthRightX, mouthRightY + TEXT_OFFSET_Y, mHintTextPaint);
+
+        float mouthBottomX = translateX(detectMouthBottomPosition.x);
+        float mouthBottomY = translateY(detectMouthBottomPosition.y);
+        canvas.drawCircle(mouthBottomX, mouthBottomY, DOT_RADIUS, mHintOutlinePaint);
+        canvas.drawText("mouth bottom", mouthBottomX, mouthBottomY + TEXT_OFFSET_Y, mHintTextPaint);
+
     }
 
 }
